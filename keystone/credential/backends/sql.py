@@ -12,7 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-from keystone.common import sql
+from keystone.common import cassandra
 from keystone import credential
 from keystone import exception
 
@@ -31,36 +31,29 @@ class CredentialModel(Model):
     type = columns.Text(max_length=255)
     extra = columns.Text(default='')
 
-connection.setup(['127.0.0.1'], 'keystone')
+connection.setup(cassandra.ips, cassandra.keyspace)
 
 sync_table(CredentialModel)
 
-def to_dict(model_obj):
-    model_dict = {}
-    for k, v in zip(model_obj.keys(), model_obj.values()):
-        model_dict[k] = v
-    return model_dict
 
 class Credential(credential.Driver):
 
     # credential crud
 
-    @sql.handle_conflicts(conflict_type='credential')
     def create_credential(self, credential_id, credential):
-        import pdb; pdb.set_trace()
         columns = CredentialModel._columns.keys()
         create_dict = {column: credential.get(column, '') for column in columns}
         ref = CredentialModel.create(**create_dict)
-        return to_dict(ref)
+        return cassandra.to_dict(ref)
 
-    @sql.truncated
+    @cassandra.truncated
     def list_credentials(self, hints):
         refs = CredentialModel.objects()
-        return [to_dict(ref) for ref in refs]
+        return [cassandra.to_dict(ref) for ref in refs]
 
     def list_credentials_for_user(self, user_id):
         refs = CredentialModel.objects.filter(user_id=user_id)
-        return [to_dict(ref) for ref in refs]
+        return [cassandra.to_dict(ref) for ref in refs]
 
     def _get_credential(self, credential_id):
         refs = CredentialModel.objects.filter(id=credential_id)
@@ -69,12 +62,11 @@ class Credential(credential.Driver):
         return refs[0]
 
     def get_credential(self, credential_id):
-        return to_dict(self._get_credential(credential_id))
+        return cassandra.to_dict(self._get_credential(credential_id))
 
-    @sql.handle_conflicts(conflict_type='credential')
     def update_credential(self, credential_id, credential):
         ref = self._get_credential(credential_id)
-        ref_dict = to_dict(ref)
+        ref_dict = cassandra.to_dict(ref)
         for key in credential:
             ref_dict[key] = credential[key]
         ref_id = ref_dict.pop(id)
