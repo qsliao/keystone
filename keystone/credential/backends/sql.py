@@ -25,11 +25,11 @@ from cqlengine.query import BatchType
 
 class CredentialModel(Model):
     id = columns.Text(primary_key=True, max_length=64)
-    user_id = columns.Text(max_length=64)
-    project_id = columns.Text(max_length=64)
-    blob = columns.Bytes()
+    user_id = columns.Text(max_length=64, index=True)
+    project_id = columns.Text(max_length=64, index=True)
+    blob = columns.Text()
     type = columns.Text(max_length=255)
-    extra = columns.Bytes()
+    extra = columns.Text()
 
 connection.setup(['127.0.0.1'], 'keystone')
 
@@ -56,8 +56,8 @@ sync_table(CredentialModel)
 
 def to_dict(model_obj):
     model_dict = {}
-    for col_tuple in model_obj:
-        model_dict[col_tuple[0]] = col_tuple[1]
+    for k, v in zip(model_obj.keys(), model_obj.values()):
+        model_dict[k] = v
     return model_dict
 
 class Credential(credential.Driver):
@@ -72,6 +72,7 @@ class Credential(credential.Driver):
         #    session.add(ref)
         #return ref.to_dict()
         columns = CredentialModel._columns.keys()
+        print 'all columns:', columns
         #print columns, credential, credential_id
         create_dict = {column: credential.get(column, 'blah') for column in columns}
         #print create_dict
@@ -93,7 +94,7 @@ class Credential(credential.Driver):
         #query = session.query(CredentialModel)
         #refs = query.filter_by(user_id=user_id).all()
         #return [ref.to_dict() for ref in refs]
-        refs = CredentialModel.objects(user_id=user_id)
+        refs = CredentialModel.objects.filter(user_id=user_id)
         return [to_dict(ref) for ref in refs]
 
     def _get_credential(self, credential_id):
@@ -101,7 +102,7 @@ class Credential(credential.Driver):
         #if ref is None:
         #    raise exception.CredentialNotFound(credential_id=credential_id)
         #return ref
-        refs = CredentialModel.objects(id=credential_id)
+        refs = CredentialModel.objects.filter(id=credential_id)
         if len(refs) is None:
             raise exception.CredentialNotFound(credential_id=credential_id)
         return refs[0]
