@@ -232,7 +232,8 @@ def connect_to_cluster():
         consistency_level = ConsistencyLevel.LOCAL_QUORUM
     return connection.setup(ips, keyspace, consistency = consistency_level, 
                             load_balancing_policy = TokenAwarePolicy(policy),
-                            default_retry_policy = QuorumFallBackRetryPolicy())
+                            default_retry_policy = QuorumFallBackRetryPolicy(),
+                            protocol_version=3)
 
 def ensure_safe_db_connection(models=None):
     """Ensures a new cassandra connection is created in new process."""
