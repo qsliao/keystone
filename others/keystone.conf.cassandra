@@ -4,7 +4,7 @@ logging_exception_prefix = %(process)d TRACE %(name)s %(instance)s
 logging_debug_format_suffix = %(funcName)s %(pathname)s:%(lineno)d
 logging_default_format_string = %(process)d %(levelname)s %(name)s [-] %(instance)s%(message)s
 logging_context_format_string = %(process)d %(levelname)s %(name)s [%(request_id)s %(user_identity)s] %(instance)s%(message)s
-debug = False
+debug = True
 admin_token = s0m3-r4nd0m-53rv1c3-t0k3n
 
 #
@@ -14,7 +14,8 @@ admin_token = s0m3-r4nd0m-53rv1c3-t0k3n
 # The nearest datacenter containing cassandra db 
 # nodes that this keystone service instance should 
 # fetch/store data to.
-# local_datacenter = <local_dc_name>
+local_datacenter = datacenter1
+cassandra_nodes_ips = 127.0.0.1
 
 # A "shared secret" that can be used to bootstrap Keystone. This "token" does
 # not represent a user, and carries no explicit authorization. To disable in
@@ -124,7 +125,7 @@ admin_token = s0m3-r4nd0m-53rv1c3-t0k3n
 
 # Print more verbose output (set logging level to INFO instead of default
 # WARNING level). (boolean value)
-verbose = false
+verbose = False
 
 # The name of a logging configuration file. This file is appended to any
 # existing logging configuration files. For details about logging configuration
@@ -628,7 +629,7 @@ admin_workers = 1
 # Deprecated group/name - [DEFAULT]/public_workers
 # This option is deprecated for removal.
 # Its value may be silently ignored in the future.
-public_workers = 1
+public_workers = 2
 
 # The number of worker processes to serve the admin eventlet application.
 # Defaults to number of CPUs (minimum of 2). (integer value)
