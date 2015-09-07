@@ -71,17 +71,19 @@ class Endpoint(cass.ExtrasModel):
     enabled = columns.Boolean(default=True, index=True)
     extra = columns.Text()
 
-cass.connect_to_cluster()
-
-sync_table(Region)
-sync_table(Endpoint)
-sync_table(Service)
+print "############################################ catalog connect_to_cluster"
+#cass.connect_to_cluster()
+models = [Region, Service, Endpoint]
+#sync_table(Region)
+#sync_table(Endpoint)
+#sync_table(Service)
 
 
 
 
 class Catalog(catalog.Driver):
     # Regions
+    @cass.ensure_safe_db_connection(models=models)
     def list_regions(self, hints):
         # Ignore hints for now
         #session = sql.get_session()
@@ -91,6 +93,7 @@ class Catalog(catalog.Driver):
         refs = Region.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_region(self, region_id):
         #ref = session.query(Region).get(region_id)
         #if not ref:
@@ -130,6 +133,7 @@ class Catalog(catalog.Driver):
         #    self._get_region(session, parent_region_id)
         pass
 
+    @cass.ensure_safe_db_connection(models=models)
     def _has_endpoints(self, region, root_region):
         #if region.endpoints is not None and len(region.endpoints) > 0:
         #    return True
@@ -173,6 +177,7 @@ class Catalog(catalog.Driver):
         ref.delete()
 
     #@sql.handle_conflicts(conflict_type='region')
+    @cass.ensure_safe_db_connection(models=models)
     def create_region(self, region_ref):
         #session = sql.get_session()
         #with session.begin():
@@ -189,6 +194,7 @@ class Catalog(catalog.Driver):
 
         raise exception.Conflict(conflict_type='region')
 
+    @cass.ensure_safe_db_connection(models=models)
     def update_region(self, region_id, region_ref):
         #session = sql.get_session()
         #with session.begin():
@@ -216,6 +222,7 @@ class Catalog(catalog.Driver):
 
     # Services
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_services(self, hints):
         #session = sql.get_session()
         #services = session.query(Service)
@@ -226,6 +233,7 @@ class Catalog(catalog.Driver):
         refs = Service.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_service(self, service_id):
         #ref = session.query(Service).get(service_id)
         #if not ref:
@@ -244,6 +252,7 @@ class Catalog(catalog.Driver):
 
         return self._get_service(service_id).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_service(self, service_id):
         #session = sql.get_session()
         #with session.begin():
@@ -258,6 +267,7 @@ class Catalog(catalog.Driver):
                 ref.batch(b).delete()
             service_ref.batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_service(self, service_id, service_ref):
         #session = sql.get_session()
         #with session.begin():
@@ -268,6 +278,7 @@ class Catalog(catalog.Driver):
         ref = Service.create(**create_dict)
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def update_service(self, service_id, service_ref):
         #session = sql.get_session()
         #with session.begin():
@@ -292,6 +303,7 @@ class Catalog(catalog.Driver):
         return Service.create(**new_dict).to_dict()
 
     # Endpoints
+    @cass.ensure_safe_db_connection(models=models)
     def create_endpoint(self, endpoint_id, endpoint_ref):
         #session = sql.get_session()
         #new_endpoint = Endpoint.from_dict(endpoint_ref)
@@ -303,6 +315,7 @@ class Catalog(catalog.Driver):
         ref = Endpoint.create(**new_endpoint)
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_endpoint(self, endpoint_id):
        # session = sql.get_session()
        # with session.begin():
@@ -311,6 +324,7 @@ class Catalog(catalog.Driver):
         ref = self._get_endpoint(endpoint_id)
         ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_endpoint(self, endpoint_id):
         #try:
         #    return session.query(Endpoint).filter_by(id=endpoint_id).one()
@@ -327,6 +341,7 @@ class Catalog(catalog.Driver):
         return self._get_endpoint(endpoint_id).to_dict()
 
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_endpoints(self, hints):
         # Ignore hints
         #session = sql.get_session()
@@ -336,6 +351,7 @@ class Catalog(catalog.Driver):
         refs = Endpoint.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def update_endpoint(self, endpoint_id, endpoint_ref):
         #session = sql.get_session()
 
@@ -360,6 +376,7 @@ class Catalog(catalog.Driver):
         new_dict = Service.get_model_dict(old_dict)
         return Endpoint.create(**new_dict).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_catalog(self, user_id, tenant_id):
         """Retrieve and format the V2 service catalog.
 
@@ -441,6 +458,7 @@ class Catalog(catalog.Driver):
 
         return catalog
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_v3_catalog(self, user_id, tenant_id):
         """Retrieve and format the current V3 service catalog.
 

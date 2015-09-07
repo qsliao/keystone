@@ -73,17 +73,20 @@ class ProjectEndpointGroup(cass.ExtrasModel):
     project_id = columns.Text(primary_key=True, max_length=64)
     endpoint_group_id = columns.Text(primary_key=True, max_length=64)
 
-cass.connect_to_cluster()
+print "############################################ endpoint filter connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(ProjectEndpoint)
-sync_table(EndpointProject)
-sync_table(EndpointGroup)
-sync_table(ProjectEndpointGroup)
-sync_table(EndpointGroupProject)
+#sync_table(ProjectEndpoint)
+#sync_table(EndpointProject)
+#sync_table(EndpointGroup)
+#sync_table(ProjectEndpointGroup)
+#sync_table(EndpointGroupProject)
+models=[ProjectEndpoint, EndpointProject, EndpointGroup, ProjectEndpointGroup, EndpointGroupProject]
 
 
 class EndpointFilter(object):
 
+    @cass.ensure_safe_db_connection(models=models)
     def add_endpoint_to_project(self, endpoint_id, project_id):
 
         # NOTE(rushiagr): we're assuming that if there is an entry
@@ -100,6 +103,7 @@ class EndpointFilter(object):
             EndpointProject.create(endpoint_id=endpoint_id,
                     project_id=project_id)
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_project_endpoint_ref(self, endpoint_id, project_id):
         try:
             ref = ProjectEndpoint.get(endpoint_id=endpoint_id,
@@ -114,19 +118,23 @@ class EndpointFilter(object):
     def check_endpoint_in_project(self, endpoint_id, project_id):
         self._get_project_endpoint_ref(endpoint_id, project_id)
 
+    @cass.ensure_safe_db_connection(models=models)
     def remove_endpoint_from_project(self, endpoint_id, project_id):
         endpoint_filter_ref = self._get_project_endpoint_ref(
             endpoint_id, project_id)
         endpoint_filter_ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_endpoints_for_project(self, project_id):
         refs = ProjectEndpoint.objects.filter_by(project_id=project_id)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_projects_for_endpoint(self, endpoint_id):
         refs = EndpointProject.objects.filter_by(endpoint_id=endpoint_id)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_endpoint(self, endpoint_id):
         refs = EndpointProject.objects.filter(endpoint_id=endpoint_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:
@@ -135,6 +143,7 @@ class EndpointFilter(object):
                         endpoint_id=endpoint_id).delete()
                 ref.batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_project(self, project_id):
         refs = ProjectEndpoint.objects.filter(project_id=project_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:
@@ -143,12 +152,14 @@ class EndpointFilter(object):
                         project_id=project_id).delete()
                 ref.batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_endpoint_group(self, endpoint_group_id, endpoint_group):
         create_dict = EndpointGroup.get_model_dict(endpoint_group)
         create_dict['id'] = endpoint_group_id
         ref = EndpointGroup.create(**create_dict)
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_endpoint_group(self, endpoint_group_id):
         try:
             ref = EndpointGroup.get(id=endpoint_group_ref)
@@ -162,12 +173,14 @@ class EndpointFilter(object):
         return endpoint_group_ref.to_dict()
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def update_endpoint_group(self, endpoint_group_id, endpoint_group):
         create_dict = EndpointGroup.get_model_dict(endpoint_group)
         create_dict['id'] = endpoint_group_id
         ref = EndpointGroup.create(**create_dict)
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_endpoint_group(self, endpoint_group_id):
 
         # NOTE(rushiagr): First delete endpoint group associations with
@@ -186,6 +199,7 @@ class EndpointFilter(object):
                                                   project_id)
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def add_endpoint_group_to_project(self, endpoint_group_id, project_id):
         try:
             ref = ProjectEndpointGroup.get(
@@ -201,6 +215,7 @@ class EndpointFilter(object):
                     endpoint_group_id=endpoint_group_id,
                     project_id=project_id)
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_endpoint_group_in_project(self,
                                        endpoint_group_id, project_id):
         try:
@@ -213,14 +228,17 @@ class EndpointFilter(object):
         return ref
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_endpoint_groups(self):
         refs = EndpointGroup.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_endpoint_groups_for_project(self, project_id):
         refs = EndpointGroupProject.objects.filter(project_id=project_id)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def remove_endpoint_group_from_project(self, endpoint_group_id,
                                            project_id):
         with BatchQuery(batch_type=BatchType.Unlogged) as b:
@@ -230,6 +248,7 @@ class EndpointFilter(object):
                     project_id=project_id).batch(b).delete()
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_projects_associated_with_endpoint_group(self, endpoint_group_id):
         refs = ProjectEndpointGroup.objects.filter(
                 endpoint_group_id=endpoint_group_id)
@@ -240,6 +259,7 @@ class EndpointFilter(object):
         # NOTE(rushiagr): not used
         pass
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_endpoint_group_association_by_project(self, project_id):
         refs = ProjectEndpointGroup.objects.filter(project_id=project_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:

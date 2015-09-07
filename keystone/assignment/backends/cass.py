@@ -31,6 +31,16 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
+class RoleAssignment(cass.ExtrasModel):
+    __tablename__ = 'assignment'
+    type = columns.Text(primary_key=True, partition_key=True, max_length=64)
+    actor_id = columns.Text(primary_key=True, partition_key=True, max_length=64)
+    target_id = columns.Text(primary_key=True, index=True, max_length=64)
+    role_id = columns.Text(primary_key=True, index=True, max_length=64)
+    inherited = columns.Boolean(default=False, required=True, index=True)
+
+models=[RoleAssignment]
+
 class AssignmentType(object):
     USER_PROJECT = 'UserProject'
     GROUP_PROJECT = 'GroupProject'
@@ -61,6 +71,7 @@ class Assignment(keystone_assignment.Driver):
     def default_resource_driver(self):
         return 'keystone.resource.backends.sql.Resource'
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_user_ids_for_project(self, tenant_id):
 
         # NOT checking distinctness
@@ -69,6 +80,7 @@ class Assignment(keystone_assignment.Driver):
         return [ref.actor_id for ref in refs if
                 ref.type==AssignmentType.USER_PROJECT]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_metadata(self, user_id=None, tenant_id=None,
                       domain_id=None, group_id=None, session=None):
         # TODO(henry-nash): This method represents the last vestiges of the old
@@ -107,6 +119,7 @@ class Assignment(keystone_assignment.Driver):
 
         return metadata_ref
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_grant(self, role_id, user_id=None, group_id=None,
                      domain_id=None, project_id=None,
                      inherited_to_projects=False):
@@ -123,6 +136,7 @@ class Assignment(keystone_assignment.Driver):
                 role_id=role_id,
                 inherited=inherited_to_projects).save() # save() required?
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_grant_role_ids(self, user_id=None, group_id=None,
                             domain_id=None, project_id=None,
                             inherited_to_projects=False):
@@ -138,6 +152,7 @@ class Assignment(keystone_assignment.Driver):
         return [ref.role_id for ref in refs
                 if ref.inherited == inherited_to_projects]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _build_grant_filter(self, role_id, user_id, group_id,
                             domain_id, project_id, inherited_to_projects):
         def _calc_assignment_type():
@@ -182,6 +197,7 @@ class Assignment(keystone_assignment.Driver):
 
         refs[0].delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def _list_project_ids_for_actor(self, actors, hints, inherited,
                                     group_only=False):
         assignment_type = [AssignmentType.GROUP_PROJECT]
@@ -211,6 +227,7 @@ class Assignment(keystone_assignment.Driver):
 
         return self._list_project_ids_for_actor(actor_list, hints, inherited)
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_domain_ids_for_user(self, user_id, group_ids, hints,
                                  inherited=False):
         # 'domain_ids is a dictionary, where keys are domain IDs, and values
@@ -235,6 +252,7 @@ class Assignment(keystone_assignment.Driver):
 
         return domain_ids.keys()
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_role_ids_for_groups_on_domain(self, group_ids, domain_id):
         if not group_ids:
             # If there's no groups then there will be no domain roles.
@@ -254,6 +272,7 @@ class Assignment(keystone_assignment.Driver):
 
         return role_ids.keys()
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_role_ids_for_groups_on_project(
             self, group_ids, project_id, project_domain_id, project_parents):
 
@@ -298,6 +317,7 @@ class Assignment(keystone_assignment.Driver):
         return self._list_project_ids_for_actor(
             group_ids, hints, inherited, group_only=True)
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_domain_ids_for_groups(self, group_ids, inherited=False):
         if not group_ids:
             # If there's no groups then there will be no domains.
@@ -314,6 +334,7 @@ class Assignment(keystone_assignment.Driver):
             domain_ids[ref.target_id] = ''
         return domain_ids.keys()
 
+    @cass.ensure_safe_db_connection(models=models)
     def add_role_to_user_and_project(self, user_id, tenant_id, role_id):
         # NOTE(rushiagr): we're doing a read, and then a write here, preserving
         # the case when the exception will be thrown. Another alternative would
@@ -337,6 +358,7 @@ class Assignment(keystone_assignment.Driver):
             role_id=role_id,
             inherited=False)
 
+    @cass.ensure_safe_db_connection(models=models)
     def remove_role_from_user_and_project(self, user_id, tenant_id, role_id):
         # TODO(rushiagr): in the SQL driver, if the role is not present,
         # the driver throws an exception. In my humble opinion, we should
@@ -357,6 +379,7 @@ class Assignment(keystone_assignment.Driver):
             # will appear here.
             ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_role_assignments(self):
 
         def denormalize_role(ref):
@@ -385,6 +408,7 @@ class Assignment(keystone_assignment.Driver):
         refs = RoleAssignment.objects.all()
         return [denormalize_role(ref) for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_project_assignments(self, project_id):
         # NOTE(rushiagr): this throws DoesNotExist error, so add try..except
         # block temporarily
@@ -395,12 +419,14 @@ class Assignment(keystone_assignment.Driver):
         except DoesNotExist:
             pass
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_role_assignments(self, role_id):
         refs = RoleAssignment.filter(role_id=role_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:
             for ref in refs:
                 ref.batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_user_assignments(self, user_id):
         refs_list = []
         for type in [AssignmentType.USER_PROJECT,
@@ -411,6 +437,7 @@ class Assignment(keystone_assignment.Driver):
                 for ref in refs:
                     ref.batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_group_assignments(self, group_id):
         refs_list = []
         for type in [AssignmentType.GROUP_PROJECT,
@@ -421,13 +448,7 @@ class Assignment(keystone_assignment.Driver):
                 for ref in refs:
                     ref.batch(b).delete()
 
-class RoleAssignment(cass.ExtrasModel):
-    __tablename__ = 'assignment'
-    type = columns.Text(primary_key=True, partition_key=True, max_length=64)
-    actor_id = columns.Text(primary_key=True, partition_key=True, max_length=64)
-    target_id = columns.Text(primary_key=True, index=True, max_length=64)
-    role_id = columns.Text(primary_key=True, index=True, max_length=64)
-    inherited = columns.Boolean(default=False, required=True, index=True)
 
-cass.connect_to_cluster()
-sync_table(RoleAssignment)
+print "############################################ assignment connect_to_cluster"
+#cass.connect_to_cluster()
+#sync_table(RoleAssignment)

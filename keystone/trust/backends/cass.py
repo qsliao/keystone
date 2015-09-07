@@ -47,12 +47,15 @@ class TrustModel(cass.ExtrasModel):
     extra = columns.Text(default='')
     roles = columns.Set(columns.Text)
 
-cass.connect_to_cluster()
+print "############################################ trust connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(TrustModel)
+#sync_table(TrustModel)
+models=[TrustModel]
 
 
 class Trust(trust.Driver):
+    @cass.ensure_safe_db_connection(models=models)
     def create_trust(self, trust_id, trust, roles):
         try:
             TrustModel.get(id=trust_id)
@@ -78,6 +81,7 @@ class Trust(trust.Driver):
             ref = TrustModel.create(**create_dict)
             return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def consume_use(self, trust_id):
         for attempt in range(MAXIMUM_CONSUME_ATTEMPTS):
             trust = self._get_trust(trust_id)
@@ -111,6 +115,7 @@ class Trust(trust.Driver):
             # incorrectly indicating a trust was consumed.
             raise exception.TrustConsumeMaximumAttempt(trust_id=trust_id)
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_trust(self, trust_id, deleted=False):
         try:
             if not deleted:
@@ -137,17 +142,21 @@ class Trust(trust.Driver):
         trust['roles'] = roles
         return trust
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_trusts(self):
         refs = TrustModel.objects().filter(is_deleted=False)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_trusts_for_trustee(self, trustee_user_id):
         refs = TrustModel.objects().filter(is_deleted=False, trustee_user_id=trustee_user_id).allow_filtering()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_trusts_for_trustor(self, trustor_user_id):
         refs = TrustModel.objects().filter(is_deleted=False, trustor_user_id=trustor_user_id).allow_filtering()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_trust(self, trust_id):
         TrustModel.objects(id=trust_id).update(is_deleted=True, deleted_at=timeutils.utcnow())

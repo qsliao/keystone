@@ -82,14 +82,18 @@ class GroupMembership(cass.ExtrasModel):
     group_id = columns.Text(primary_key=True, max_length=64)
     user_id = columns.Text(primary_key=True, clustering_order="DESC", max_length=64)
 
-cass.connect_to_cluster()
+print "############################################ identity connect_to_cluster"
+##cass.connect_to_cluster()
 
-sync_table(User)
-sync_table(DomainIdUserNameToUserId)
-sync_table(Group)
-sync_table(DomainIdGroupNameToGroupId)
-sync_table(UserGroups)
-sync_table(GroupMembership)
+#sync_table(User)
+#sync_table(DomainIdUserNameToUserId)
+#sync_table(Group)
+#sync_table(DomainIdGroupNameToGroupId)
+#sync_table(UserGroups)
+#sync_table(GroupMembership)
+
+models = [User, DomainIdUserNameToUserId, Group, DomainIdGroupNameToGroupId,
+        UserGroups, GroupMembership]
 
 class Identity(identity.Driver):
     # NOTE(henry-nash): Override the __init__() method so as to take a
@@ -128,6 +132,7 @@ class Identity(identity.Driver):
 
     # user crud
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_user(self, user_id, user):
         # First check if a user already exists with the same name
         # for the same domain. We shouldn't be allowing this.
@@ -153,6 +158,7 @@ class Identity(identity.Driver):
         return identity.filter_user(user_dict)
 
 
+    @cass.ensure_safe_db_connection(models=models)
     @cass.truncated
     def list_users(self, hints):
         # @TODO: Implement complete hints!
@@ -169,6 +175,7 @@ class Identity(identity.Driver):
 
         return [identity.filter_user(x.to_dict()) for x in user_refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_user(self, user_id):
         result = None
         try:
@@ -180,8 +187,24 @@ class Identity(identity.Driver):
         user_dict = self._get_user(user_id).to_dict()
         return identity.filter_user(user_dict)
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_user_by_name(self, user_name, domain_id):
         results = DomainIdUserNameToUserId.objects.filter(domain_id=domain_id, name=user_name)
+        #from cassandra.cqlengine import CQLEngineException
+        #try:
+        #    uuid_ref = results.first()
+        #except CQLEngineException:
+        #    cass.connect_to_cluster()
+
+        #    sync_table(User)
+        #    sync_table(DomainIdUserNameToUserId)
+        #    sync_table(Group)
+        #    sync_table(DomainIdGroupNameToGroupId)
+        #    sync_table(UserGroups)
+        #    sync_table(GroupMembership)
+        #    uuid_ref = results.first()
+        #    import pdb;pdb.set_trace()
+
         uuid_ref = results.first()
         if uuid_ref is None:
             raise exception.UserNotFound(user_id=user_name)
@@ -205,6 +228,7 @@ class Identity(identity.Driver):
         user_ref = self._get_user(user_id)
         return identity.filter_user(user_ref.to_dict())
 
+    @cass.ensure_safe_db_connection(models=models)
     def add_user_to_group(self, user_id, group_id):
         self.get_group(group_id)
         self.get_user(user_id)
@@ -217,6 +241,7 @@ class Identity(identity.Driver):
         except DoesNotExist:
             UserGroups.create(user_id=user_id, group_id=group_id)
 
+    @cass.ensure_safe_db_connection(models=models)
     def check_user_in_group(self, user_id, group_id):
         self.get_group(group_id)
         self.get_user(user_id)
@@ -229,6 +254,7 @@ class Identity(identity.Driver):
                                       'group_id': group_id})
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def remove_user_from_group(self, user_id, group_id):
         # We don't check if user or group are still valid and let the remove
         # be tried anyway - in case this is some kind of clean-up operation
@@ -251,6 +277,7 @@ class Identity(identity.Driver):
                                       {'user_id': user_id,
                                       'group_id': group_id})
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_groups_for_user(self, user_id, hints):
         # TODO(rushiagr) use the hints
         results = UserGroups.objects.filter(user_id=user_id)
@@ -262,6 +289,7 @@ class Identity(identity.Driver):
 
         return groups
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_users_in_group(self, group_id, hints):
         results = GroupMembership.objects.filter(group_id=group_id)
         users = []
@@ -272,6 +300,7 @@ class Identity(identity.Driver):
 
         return users
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_user(self, user_id):
         user_ref = self._get_user(user_id)
         User(id=user_id).delete()
@@ -282,6 +311,7 @@ class Identity(identity.Driver):
     # group crud
 
     #@sql.handle_conflicts(conflict_type='group')
+    @cass.ensure_safe_db_connection(models=models)
     def create_group(self, group_id, group):
         group_create_dict = Group.get_model_dict(group)
         # TODO: check  if 'group' var has 'id', else take from group_id
@@ -297,6 +327,7 @@ class Identity(identity.Driver):
         return ref.to_dict()
 
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_groups(self, hints):
         # TODO(rushiagr): implement complete hints!
         x_cols = cass.get_exact_comparison_columns(hints)
@@ -312,6 +343,7 @@ class Identity(identity.Driver):
 
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_group(self, group_id):
         try:
             ref = Group.get(id=group_id)
@@ -322,6 +354,7 @@ class Identity(identity.Driver):
     def get_group(self, group_id):
         return self._get_group(group_id).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_group_by_name(self, group_name, domain_id):
         try:
             mapping_ref = DomainIdGroupNameToGroupId.get(domain_id=domain_id,
@@ -332,6 +365,7 @@ class Identity(identity.Driver):
             raise exception.GroupNotFound(group_id=group_name)
 
     #@sql.handle_conflicts(conflict_type='group')
+    @cass.ensure_safe_db_connection(models=models)
     def update_group(self, group_id, group):
         group_ref = self._get_group(group_id)
         if 'name' in group and group_ref.name != group['name']:
@@ -344,6 +378,7 @@ class Identity(identity.Driver):
         group_ref = self._get_group(group_id)
         return group_ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_group(self, group_id):
         group_ref = self._get_group(group_id)
         Group(id=group_id).delete()

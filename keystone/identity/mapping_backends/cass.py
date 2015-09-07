@@ -62,14 +62,17 @@ class IDMappingGSI(cass.ExtrasModel):
     entity_type = columns.Text(primary_key=True, partition_key=True, max_length=64)
     public_id = columns.Text(max_length=64)
 
-cass.connect_to_cluster()
+print "############################################ mapping connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(IDMapping)
-sync_table(IDMappingGSI)
+#sync_table(IDMapping)
+#sync_table(IDMappingGSI)
+models=[IDMapping, IDMappingGSI]
 
 @dependency.requires('id_generator_api')
 class Mapping(identity.MappingDriver):
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_public_id(self, local_entity):
         # NOTE(rushiagr): First read henry-nash's comment below and then read
         # further. So basically, we can make some changes to some
@@ -108,6 +111,7 @@ class Mapping(identity.MappingDriver):
             return None
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_id_mapping(self, public_id):
         #session = sql.get_session()
         #mapping_ref = session.query(IDMapping).get(public_id)
@@ -119,6 +123,7 @@ class Mapping(identity.MappingDriver):
         except DoesNotExist:
             pass
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_id_mapping(self, local_entity, public_id=None):
         #entity = local_entity.copy()
         #with sql.transaction() as session:
@@ -145,6 +150,7 @@ class Mapping(identity.MappingDriver):
 
         return public_id
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_id_mapping(self, public_id):
         #with sql.transaction() as session:
         #    try:
@@ -164,6 +170,7 @@ class Mapping(identity.MappingDriver):
             pass
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def purge_mappings(self, purge_filter):
         #session = sql.get_session()
         #query = session.query(IDMapping)
