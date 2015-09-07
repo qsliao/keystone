@@ -29,29 +29,34 @@ class CredentialModel(cass.ExtrasModel):
     type = columns.Text(max_length=255)
     extra = columns.Text(default='')
 
-cass.connect_to_cluster()
+print "############################################ credential connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(CredentialModel)
-
+#sync_table(CredentialModel)
+models = [CredentialModel]
 
 class Credential(credential.Driver):
 
     # credential crud
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_credential(self, credential_id, credential):
         create_dict = CredentialModel.get_model_dict(credential)
         ref = CredentialModel.create(**create_dict)
         return ref.to_dict()
 
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_credentials(self, hints):
         refs = CredentialModel.objects()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_credentials_for_user(self, user_id):
         refs = CredentialModel.objects.filter(user_id=user_id)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_credential(self, credential_id):
         refs = CredentialModel.objects.filter(id=credential_id)
         if len(refs) is None:
@@ -61,6 +66,7 @@ class Credential(credential.Driver):
     def get_credential(self, credential_id):
         return self._get_credential(credential_id).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def update_credential(self, credential_id, credential):
         ref = self._get_credential(credential_id)
         ref_dict = ref.to_dict()
@@ -75,12 +81,14 @@ class Credential(credential.Driver):
     def delete_credential(self, credential_id):
         ref = self._get_credential(credential_id).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_credentials_for_project(self, project_id):
         refs = CredentialModel.objects(project_id=project_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:
             for ref in refs:
                 CredentialModel.objects(id=ref.id).batch(b).delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_credentials_for_user(self, user_id):
         refs = CredentialModel.objects(user_id=user_id)
         with BatchQuery(batch_type=BatchType.Unlogged) as b:

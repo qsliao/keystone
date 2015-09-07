@@ -24,8 +24,16 @@ from cassandra.cqlengine.management import sync_table
 
 LOG = log.getLogger(__name__)
 
+class RoleModel(cass.ExtrasModel):
+    id = columns.Text(primary_key=True, max_length=64)
+    name = columns.Text(max_length=255, required=True)
+    extra = columns.Text(default='')
+
+models=[RoleModel]
+
 class Role(assignment.RoleDriver):
 
+    @cass.ensure_safe_db_connection(models=models)
     def create_role(self, role_id, role):
         try:
             RoleModel.get(id=role_id)
@@ -45,12 +53,14 @@ class Role(assignment.RoleDriver):
             return ref.to_dict()
 
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_roles(self, hints):
         #FIXME: handle hints
         #refs = sql.filter_limit_query(RoleTable, query, hints)
         refs = RoleModel.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_roles_from_ids(self, ids):
         if not ids:
             return []
@@ -58,6 +68,7 @@ class Role(assignment.RoleDriver):
             role_refs = RoleModel.objects.filter(id__in=ids)
             return [role_ref.to_dict() for role_ref in role_refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_role(self, role_id):
         try:
             ref = RoleModel.get(id=role_id)
@@ -68,6 +79,7 @@ class Role(assignment.RoleDriver):
     #@sql.handle_conflicts(conflict_type='role')
     #Vivek: there doesn't seem to a case when an update would result in a
     #conflict. So, ignoring the decorator for now.
+    @cass.ensure_safe_db_connection(models=models)
     def update_role(self, role_id, role):
         #primary key update not permitted
         if 'id' in role:
@@ -77,16 +89,13 @@ class Role(assignment.RoleDriver):
         model_dict['id'] = role_id
         return model_dict
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_role(self, role_id):
         RoleModel.objects(id=role_id).delete()
 
 
-class RoleModel(cass.ExtrasModel):
-    id = columns.Text(primary_key=True, max_length=64)
-    name = columns.Text(max_length=255, required=True)
-    extra = columns.Text(default='')
+print "############################################ role connect_to_cluster"
+#cass.connect_to_cluster()
 
-cass.connect_to_cluster()
-
-sync_table(RoleModel)
+#sync_table(RoleModel)
 

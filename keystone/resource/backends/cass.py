@@ -25,7 +25,7 @@ from keystone.common import sql
 from keystone import clean
 
 from cassandra.cqlengine import columns
-from cassandra.cqlengine import connection
+#from cassandra.cqlengine import connection
 from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
 from cassandra.cqlengine.query import BatchType, DoesNotExist
@@ -63,18 +63,21 @@ class ProjectGSINameDomainId(cass.ExtrasModel):
     domain_id = columns.Text(primary_key=True, partition_key=True, max_length=64)
     project_id = columns.Text(max_length=64)
 
-cass.connect_to_cluster()
+print "############################################ resource connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(Domain)
-sync_table(DomainGSIName)
-sync_table(Project)
-sync_table(ProjectGSINameDomainId)
+#sync_table(Domain)
+#sync_table(DomainGSIName)
+#sync_table(Project)
+#sync_table(ProjectGSINameDomainId)
+models=[Domain, DomainGSIName, Project, ProjectGSINameDomainId]
 
 class Resource(keystone_resource.Driver):
 
     def default_assignment_driver(self):
         return 'sql'
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_project(self, project_id):
         try:
             return Project.get(id=project_id)
@@ -85,6 +88,7 @@ class Resource(keystone_resource.Driver):
     def get_project(self, tenant_id):
         return self._get_project(tenant_id).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_project_by_name(self, tenant_name, domain_id):
         try:
             project_gsi_ref = ProjectGSINameDomainId.get(name=tenant_name,
@@ -97,6 +101,7 @@ class Resource(keystone_resource.Driver):
         return project_ref.to_dict()
 
     @cass.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_projects(self, hints):
         # NOTE(rushiagr): All the time we're only talking about filtering
         # based on hints if the filter key is a secondary index or a GSI. BUT
@@ -117,6 +122,7 @@ class Resource(keystone_resource.Driver):
         return [ref.to_dict() for ref in refs]
 
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_projects_from_ids(self, ids):
         if not ids:
             return []
@@ -124,6 +130,7 @@ class Resource(keystone_resource.Driver):
             refs = Project.objects.filter(id__in=ids)
             return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_project_ids_from_domain_ids(self, domain_ids):
         if not domain_ids:
             return []
@@ -136,6 +143,7 @@ class Resource(keystone_resource.Driver):
             for refs in refs_list:
                 return_list.extend([ref.id for ref in refs])
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_projects_in_domain(self, domain_id):
         refs = Project.objects.filter(domain_id=domain_id)
         return [ref.to_dict() for ref in refs]
@@ -155,6 +163,7 @@ class Resource(keystone_resource.Driver):
 
     # CRUD
     @cass.handle_conflicts(conflict_type='project')
+    @cass.ensure_safe_db_connection(models=models)
     def create_project(self, tenant_id, tenant):
         try:
             ref = Project.get(id=tenant['id'])
@@ -184,6 +193,7 @@ class Resource(keystone_resource.Driver):
         return ref.to_dict()
 
     #@sql.handle_conflicts(conflict_type='project')
+    @cass.ensure_safe_db_connection(models=models)
     def update_project(self, tenant_id, tenant):
         if 'name' in tenant:
             tenant['name'] = clean.project_name(tenant['name'])
@@ -225,6 +235,7 @@ class Resource(keystone_resource.Driver):
 
 
     #@sql.handle_conflicts(conflict_type='project')
+    @cass.ensure_safe_db_connection(models=models)
     def delete_project(self, tenant_id):
         try:
             ref = Project.get(id=tenant_id)
@@ -238,6 +249,7 @@ class Resource(keystone_resource.Driver):
     # domain crud
 
     #@sql.handle_conflicts(conflict_type='domain')
+    @cass.ensure_safe_db_connection(models=models)
     def create_domain(self, domain_id, domain):
         domain_create_dic = Domain.get_model_dict(domain)
         ref = Domain.create(**domain_create_dic)
@@ -249,11 +261,13 @@ class Resource(keystone_resource.Driver):
         return ref.to_dict()
 
     #@sql.truncated
+    @cass.ensure_safe_db_connection(models=models)
     def list_domains(self, hints):
         # NOTE(rushiagr): No secondary index on Domain table, so skip hints!
         refs = Domain.objects.all()
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_domains_from_ids(self, ids):
         if not ids:
             return []
@@ -261,6 +275,7 @@ class Resource(keystone_resource.Driver):
             refs = Domain.objects.filter(id__in=ids)
             return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def _get_domain(self, domain_id):
         try:
             return Domain.get(id=domain_id)
@@ -270,6 +285,7 @@ class Resource(keystone_resource.Driver):
     def get_domain(self, domain_id):
         return self._get_domain(domain_id).to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def get_domain_by_name(self, domain_name):
         try:
             gsi_ref = DomainGSIName.get(name=domain_name)
@@ -278,6 +294,7 @@ class Resource(keystone_resource.Driver):
             raise exception.DomainNotFound(domain_id=domain_name)
 
     @sql.handle_conflicts(conflict_type='domain')
+    @cass.ensure_safe_db_connection(models=models)
     def update_domain(self, domain_id, domain):
         old_dict = self._get_domain(domain_id).to_dict()
 
@@ -311,6 +328,7 @@ class Resource(keystone_resource.Driver):
 
         return ref.to_dict()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_domain(self, domain_id):
         try:
             ref = Domain.get(id=domain_id)

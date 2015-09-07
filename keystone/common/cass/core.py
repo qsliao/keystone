@@ -32,9 +32,13 @@ from cassandra.policies import TokenAwarePolicy
 from cassandra.policies import DCAwareRoundRobinPolicy
 from cassandra.policies import RetryPolicy
 from cassandra import ConsistencyLevel
+from cassandra.cqlengine import CQLEngineException
+print "############################################ core.py start"
+from cassandra.cqlengine.management import sync_table
 
 import functools
 import json
+import os
 
 from keystone import exception
 from keystone.i18n import _
@@ -212,6 +216,7 @@ class QuorumFallBackRetryPolicy(RetryPolicy):
                 return (self.RETHROW, None)
 
 def connect_to_cluster():
+    print "############################################ core.py connect_to_cluster"
     if CONF.local_datacenter is not None:
         policy = DCAwareRoundRobinPolicy(local_dc=CONF.local_datacenter)
     else:
@@ -227,3 +232,22 @@ def connect_to_cluster():
     return connection.setup(ips, keyspace, consistency = consistency_level, 
                             load_balancing_policy = TokenAwarePolicy(policy),
                             default_retry_policy = QuorumFallBackRetryPolicy())
+
+def ensure_safe_db_connection(models=None):
+    """Ensures a new cassandra connection is created in new process."""
+    _exc_msg = 'Starting new connection db connection for process %(pid)s'
+
+    def decorator(method):
+        @functools.wraps(method)
+        def wrapper(*args, **kwargs):
+            try:
+                return method(*args, **kwargs)
+            except CQLEngineException:
+                LOG.debug(_exc_msg, {'pid', os.getpid()})
+                connect_to_cluster()
+                for model in (models or []):
+                    sync_table(model)
+                return method(*args, **kwargs)
+
+        return wrapper
+    return decorator

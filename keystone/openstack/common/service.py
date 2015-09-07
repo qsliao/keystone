@@ -303,7 +303,13 @@ class ProcessLauncher(object):
 
         wrap.forktimes.append(time.time())
 
+        print "########################################## service.py just before fork"
         pid = os.fork()
+        #from keystone.openstack.common import nothing
+        #global global_dict
+        #print global_dict
+        #print 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz'
+        #nothing.global_dict = {'pid': os.getpid(), 'ppid': os.getppid()}
         if pid == 0:
             launcher = self._child_process(wrap.service)
             while True:

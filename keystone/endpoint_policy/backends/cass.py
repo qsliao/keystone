@@ -30,9 +30,11 @@ class PolicyAssociation(cass.ExtrasModel):
                              index=True, max_length=64, default='null')
     policy_id = columns.Text(required=True, index=True, max_length=64)
 
-cass.connect_to_cluster()
+print "############################################ endpoint policy  connect_to_cluster"
+#cass.connect_to_cluster()
 
-sync_table(PolicyAssociation)
+#sync_table(PolicyAssociation)
+models=[PolicyAssociation]
 
 # (endpoint_id, service_id, region_id) together form the primary key.
 # But they aren't mandatory params. So, when any of them aren't provided,
@@ -49,6 +51,7 @@ def process_args(func):
 class EndpointPolicy(object):
 
     @process_args
+    @cass.ensure_safe_db_connection(models=models)
     def create_policy_association(self, policy_id, endpoint_id='null',
                                   service_id='null', region_id='null'):
         PolicyAssociation.objects(endpoint_id=endpoint_id,
@@ -56,6 +59,7 @@ class EndpointPolicy(object):
                               region_id=region_id).update(policy_id=policy_id)
 
     @process_args
+    @cass.ensure_safe_db_connection(models=models)
     def check_policy_association(self, policy_id, endpoint_id='null',
                                  service_id='null', region_id='null'):
         if PolicyAssociation.objects(endpoint_id=endpoint_id,
@@ -64,6 +68,7 @@ class EndpointPolicy(object):
             raise exception.PolicyAssociationNotFound()
 
     @process_args
+    @cass.ensure_safe_db_connection(models=models)
     def delete_policy_association(self, policy_id, endpoint_id='null',
                                   service_id='null', region_id='null'):
         try:
@@ -78,6 +83,7 @@ class EndpointPolicy(object):
             raise exception.PolicyAssociationNotFound()
 
     @process_args
+    @cass.ensure_safe_db_connection(models=models)
     def get_policy_association(self, endpoint_id='null',
                                service_id='null', region_id='null'):
         try:
@@ -87,22 +93,27 @@ class EndpointPolicy(object):
         except DoesNotExist:
             raise exception.PolicyAssociationNotFound()
 
+    @cass.ensure_safe_db_connection(models=models)
     def list_associations_for_policy(self, policy_id):
         refs = PolicyAssociation.objects(policy_id=policy_id)
         return [ref.to_dict() for ref in refs]
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_endpoint(self, endpoint_id):
         for ref in PolicyAssociation.objects(endpoint_id=endpoint_id):
             ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_service(self, service_id):
         for ref in PolicyAssociation.objects(service_id=service_id):
             ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_region(self, region_id):
         for ref in PolicyAssociation.objects(region_id=region_id):
             ref.delete()
 
+    @cass.ensure_safe_db_connection(models=models)
     def delete_association_by_policy(self, policy_id):
         for ref in PolicyAssociation.objects(policy_id=policy_id):
             ref.delete()
