@@ -1,6 +1,3 @@
-
-NOTE: MAKE SURE YOU UPDATE ENDPOINT URL
-
 use keystone;
 
 INSERT INTO user (id, default_project_id, domain_id, enabled, extra, name, password) VALUES ( '90f0471df5a749e59e997f772b146b07', NULL, 'default', True, '{"email": "demo@example.com"}', 'demo', '$6$rounds=40000$5Y2F4aQVM9I6N0xX$GcgsL3QoZG8MkPCngRyU6mykw.SeF3IqCmAU4TUA.QkzNiq9SihYQSDXVPY1TEFvcGhadL2JG1Dmz6OGxEIKA/');
