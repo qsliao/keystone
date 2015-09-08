@@ -245,7 +245,7 @@ def ensure_safe_db_connection(models=None):
             try:
                 return method(*args, **kwargs)
             except CQLEngineException:
-                LOG.debug(_exc_msg, {'pid', os.getpid()})
+                LOG.info(_exc_msg, {'pid', os.getpid()})
                 connect_to_cluster()
                 for model in (models or []):
                     sync_table(model)
