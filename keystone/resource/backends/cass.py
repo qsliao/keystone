@@ -201,8 +201,12 @@ class Resource(keystone_resource.Driver):
         tenant_ref = self._get_project(tenant_id)
         old_project_dict = tenant_ref.to_dict()
 
-        if (old_project_dict['name'] != tenant['name'] or
-                old_project_dict['domain_id'] != tenant['domain_id']):
+
+
+        if old_project_dict['name'] != tenant['name']:
+            exception.ForbiddenAction(message='project name or domain_id cannot be updated')
+
+        if 'domain_id' in tenant and tenant['domain_id'] != old_project_dict['domain_id']:
             exception.ForbiddenAction(message='project name or domain_id cannot be updated')
 
         # NOTE(rushiagr): Following commented code is left here
