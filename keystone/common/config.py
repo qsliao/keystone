@@ -25,6 +25,19 @@ _SSO_CALLBACK = '/etc/keystone/sso_callback_template.html'
 
 FILE_OPTIONS = {
     None: [
+        cfg.StrOpt('local_datacenter', default=None,
+                   help='The nearest datacenter containing cassandra db '
+                        'nodes that this keystone service instance should '
+                        'fetch/store data to. Provide the name '
+                        'assigned to the datacenter while configuring '
+                        'your Cassandra cluster (can be seen by running '
+                        '"nodetool status" command).'),
+        cfg.StrOpt('cassandra_nodes_ips', default=None,
+                   help='The list of ips of cassandra db nodes'),
+        cfg.StrOpt('cassandra_keyspace', default=None,
+                    help='the cassandra keyspace pertaining to keystone'),
+        cfg.StrOpt('cassandra_consistency', default=None,
+                    help='the consistency level for cassandra queries'),
         cfg.StrOpt('admin_token', secret=True, default='ADMIN',
                    help='A "shared secret" that can be used to bootstrap '
                         'Keystone. This "token" does not represent a user, '
